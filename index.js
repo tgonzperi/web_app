@@ -1,5 +1,3 @@
-
-const { CloudantV1 } = require('@ibm-cloud/cloudant');
 const express = require("express");
 const path = require('path');
 // const { IamAuthenticator } = require('ibm-cloud-sdk-core/auth');
@@ -20,7 +18,7 @@ const path = require('path');
 //   console.log(response.result);
 // });
 
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 3000;
 
 const app = express();
 
