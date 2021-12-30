@@ -11,8 +11,10 @@
   "license": "ISC",
   "dependencies": {
     "@ibm-cloud/cloudant": "^0.0.22",
+    "body-parser": "^1.19.1",
     "express": "^4.17.1",
     "fiix-cmms-client": "^2.8.4",
-    "mqtt": "^4.2.8"
+    "mqtt": "^4.2.8",
+    "mysql": "^2.18.1"
   }
 }
