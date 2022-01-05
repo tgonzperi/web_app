@@ -2,14 +2,74 @@ const express = require("express");
 const path = require('path');
 const bodyParser = require('body-parser')
 
-const connectFiix = require("./fiix.js");
-const start_mqtt = require('./mqtt_subscriber.js');
-
-start_mqtt();
+const fiixclient = require("./fiix.js");
 
 var mysql      = require('mysql');
 
 var status = "No Connection";
+
+var errorList = {
+  linortek: [],
+  nettra: []
+      }
+var fiix = new fiixclient().getInstance();
+
+fiix.on('connection', () => {
+  status = 'Connection Established';
+});
+
+fiix.on('disconnection', () => {
+  status = 'No Connection';
+});
+
+fiix.on('error', (e) => {
+  switch (e.ErrorCode) {
+    case 5:
+      let error = {}
+      if(errorList[e.DeviceType].filter((elem) => elem.asset_id === e.asset_id).length === 0){
+        error = e
+        error.message = 'id = '+ e.asset_id + ' (MacAddress = ' + e.device_id + ') doesn\'t exist in fiix'
+        errorList[e.DeviceType].push(error)
+        console.log('id = ',e.asset_id, ' (MacAddress = ', e.device_id,') doesn\'t exist in fiix')
+      }
+      break;
+  
+    default:
+      break;
+  }
+})
+
+var mqtt_subscriber = require('./mqtt_subscriber.js');
+
+var mqttSubscriber = new mqtt_subscriber(); 
+
+mqttSubscriber.on('error', (e) => {
+  let error = {}
+  switch (e.ErrorCode) {
+    case 1:
+      console.log('SQL Error')
+      break;
+    case 2:
+      error = e
+      error.message = (e.DeviceType === 'linortek' ? 'MacAddress ' : 'Nettra Id ') + e.device_id + ' not found in table'
+      errorList[e.DeviceType].push(error)
+      console.log('Device id ', e.device_id, ' not found in Table')
+    break;
+    case 3:
+      error = e;
+      error.message = 'Id' + e.index + ' is missing for ' + (e.DeviceType === 'linortek' ? 'MacAddress ' : 'Nettra Id ') + e.device_id
+      errorList[e.DeviceType].push(error)
+      console.log('Id', e.index, ' not found in Table')
+      break;
+    case 4:
+      console.log("Credentials not set");
+    default:
+      break;
+  }
+})
+
+
+
 
 function set_mysql_command(id, arr, DeviceType)
 {
@@ -34,9 +94,57 @@ function set_mysql_command(id, arr, DeviceType)
 
   }
   sql = sql + values;
-  console.log(sql);
   return sql;
 }
+
+function checkDeviceId(DeviceType, device_id){
+  errorList[DeviceType].forEach((el, ind) => {
+    if(el.ErrorCode === 2 && el.device_id === device_id){
+      console.log('Missing Device Id added');
+      errorList[DeviceType].splice(ind, 1);
+    }
+  })
+}
+
+function checkMissingId(id, DeviceType, max_index=0){
+  errorList[DeviceType].forEach((el, ind) => {
+    if(el.ErrorCode === 3 && el.id === id){
+      if(max_index){
+        if(max_index >= el.index){
+          console.log('Missing asset id added');
+          errorList[DeviceType].splice(ind, 1);
+        }
+      }else{
+        console.log('Line of missing id deleted');
+        errorList[DeviceType].splice(ind, 1);
+      }
+    }
+  })
+}
+
+function checkWrongId(id, DeviceType, asset_idList=[]){
+  errorList[DeviceType].forEach((el, ind) => {
+    if(el.ErrorCode === 5 && el.id === id){
+      if(asset_idList.length === 0){
+        console.log('Wrong id line deleted');
+        errorList[DeviceType].splice(ind, 1);
+      }else{
+        let isPresent = false;
+        asset_idList.forEach((elem) => {
+          console.log(elem)
+          console.log(el.asset_id)
+          isPresent |= (elem === el.asset_id)
+        })
+        if(!isPresent){
+          console.log('Wrong id deleted')
+          errorList[DeviceType].splice(ind, 1);
+        }
+      }
+
+    }
+  })
+}
+
 
 const PORT = process.env.PORT || 3001;
 
@@ -48,9 +156,6 @@ app.use(express.static(path.resolve(__dirname, './client/build')));
 
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
-
-
-
 
 
 // Handle GET requests to /api route
@@ -67,10 +172,9 @@ app.get("/api/fiix/status", (req, res) => {
 // Handle GET requests to /api route
 app.post("/api/fiix/form", (req, res) => {
   var data = req.body;
-  connectFiix(data.BaseURI, data.APPKey, data.AuthToken, data.PKey, (ret) => {
-    status = ret;
-    res.end();
-  });
+  fiix.setCoords(data.BaseURI, data.APPKey, data.AuthToken, data.PKey);
+  fiix.connectFiix();
+  res.end();
 });
 
 app.post("/api/add_mqtt/:DeviceType", (req, res) => {
@@ -78,46 +182,76 @@ app.post("/api/add_mqtt/:DeviceType", (req, res) => {
   var DeviceType = req.params.DeviceType;
 
   var key_val = Object.entries(data.data);
-  var sql = set_mysql_command(data.id, key_val, DeviceType);
+  let asset_list = []
+  let asset_list_name = []
+  key_val.forEach((el, ind) => {
+    if(ind !== 0 && !isNaN(parseInt(el[1]))){
+      asset_list_name.push(el[0])
+      asset_list.push(parseInt(el[1]));
+    }
+  })
 
-  var connection = mysql.createConnection({
-    host     : 'localhost',
-    user     : '360ingMySQL',
-    password : 'Sbq4504P',
-    database : '360ing_db'
-  });
+  fiix.checkId(asset_list, parseInt(data.id), DeviceType, key_val[0][1])
+  // var sql = set_mysql_command(data.id, key_val, DeviceType);
+  var sql = 'INSERT INTO ' + DeviceType + ' (id, ' + key_val[0][0];
+  let sqlfin = ''
+  asset_list_name.forEach((elem, index)=>{
+    sql+= ', ' + elem;
+    sqlfin += ', ?'
+  })
+  sqlfin += ')'
+  sql+= ') VALUES (?, ?' + sqlfin;
 
-  connection.connect();
-  connection.query(sql, function (err, result) {
+  checkDeviceId(DeviceType,key_val[0][1])
+  try{
+  let values = [ data.id, key_val[0][1]]
+  mqttSubscriber.sqlpool.query(sql, values.concat(asset_list), function (err, result) {
     if (err) throw err;
     console.log("1 record inserted");
   });
+  }catch(error){
+  console.log("Error : ", error.code)
+  console.log("Error No: ", error.errno)
+  }
+  res.end();
+});
 
+app.post("/api/edit_mqtt/:DeviceType", (req, res) => {
+  var data = req.body;
+  var DeviceType = req.params.DeviceType;
+
+  var key_val = Object.entries(data.data);
+  let asset_list = []
+  key_val.forEach((el, ind) => {
+    if(ind !== 0 && !isNaN(parseInt(el[1]))){
+      asset_list.push(parseInt(el[1]));
+    }
+  })
+
+  fiix.checkId(asset_list, parseInt(data.id), DeviceType, key_val[0][1])
+  checkWrongId(parseInt(data.id), DeviceType,asset_list);
+  checkMissingId(parseInt(data.id), DeviceType, asset_list.length - 1);
+  checkDeviceId(DeviceType, key_val[0][1])
+  var sql = 'UPDATE ' + DeviceType + ' SET ' + key_val[0][0] + '=?, id0=?, id1=?, id2=?, id3=? WHERE id=' + data.id;
+  mqttSubscriber.sqlpool.query(sql,[key_val[0][1], data.data.id0, data.data.id1, data.data.id2, data.data.id3 ], function (err, result) {
+    if (err) throw err;
+    console.log("1 record updated");
+  });
   res.end();
 });
 
 app.post("/api/rm_mqtt/:DeviceType", (req, res) => {
-  console.log('RM');
   var data = req.body;
   var DeviceType = req.params.DeviceType;
 
+  checkMissingId(parseInt(data.id), DeviceType, data.device_id);
+  checkWrongId(parseInt(data.id), DeviceType);
   var sql = "DELETE FROM " + DeviceType +" WHERE id=" +data.id;
 
-  var connection = mysql.createConnection({
-    host     : 'localhost',
-    user     : '360ingMySQL',
-    password : 'Sbq4504P',
-    database : '360ing_db'
-  });
-
-  connection.connect();
-
-  connection.query(sql, function (error, results, fields) {
+  mqttSubscriber.sqlpool.query(sql, function (error, results, fields) {
     if (error) throw Error;
     console.log("Records with id = ", data.id, "deleted");
   });
-   
-  connection.end();
 
   res.end();
 });
@@ -127,45 +261,32 @@ app.post("/api/rm_all_mqtt/:DeviceType", (req, res) => {
 
   var sql = "DELETE FROM " + DeviceType;
 
-  var connection = mysql.createConnection({
-    host     : 'localhost',
-    user     : '360ingMySQL',
-    password : 'Sbq4504P',
-    database : '360ing_db'
-  });
+  errorList[DeviceType] = errorList[DeviceType].filter((el) => el.ErrorCode === 2)
 
-  connection.connect();
 
-  connection.query(sql, function (error, results, fields) {
+  mqttSubscriber.sqlpool.query(sql, function (error, results, fields) {
     if (error) throw Error;
     console.log("All records deleted");
   });
-   
-  connection.end();
 
   res.end();
 });
 
+
+app.get("/api/errors/:DeviceType", (req, res) => {
+  var DeviceType = req.params.DeviceType;
+  res.json(errorList[DeviceType]);
+  res.end();
+})
 app.post("/api/mqtt/:DeviceType", (req,res) => {
 
   var DeviceType = req.params.DeviceType;
 
-  var connection = mysql.createConnection({
-    host     : 'localhost',
-    user     : '360ingMySQL',
-    password : 'Sbq4504P',
-    database : '360ing_db'
-  });
-
-  connection.connect();
-
-  connection.query('SELECT * FROM ' + DeviceType, function (error, results, fields) {
+  mqttSubscriber.sqlpool.query('SELECT * FROM ' + DeviceType, function (error, results, fields) {
     if (error) throw Error;
     res.json(results);
     res.end();
   });
-   
-  connection.end();
 })
 
 // All other GET requests not handled before will return our React app
