@@ -48,44 +48,69 @@ class mqtt_subscriber{
       return topic.slice(0,index_bar);
     }
 
-    const findDeviceId = (DeviceType, message) => {
+    function get_Id(topic){
+      var index_bar = topic.indexOf("/");
+      return topic.slice(index_bar+1);      
+    }
 
-      const sqlquery = (message, error, results) => {
+      const sqlquery = (DeviceType, device_id, values, error, results) => {
         
         if (error) this.eventEmitter.emit('error', {ErrorCode: 1});
         if (results.length === 0){
           console.log('Device Id not found')
           var e = {
             ErrorCode: 2,
-            device_id: message.device_id,
+            device_id: device_id,
             DeviceType: DeviceType
           }
           this.eventEmitter.emit('error', e); 
         }else{
           let data = {id: results[0].id,
-                    device_id: message.device_id,
+                    device_id: device_id,
                     DeviceType: DeviceType,
                     req: [],
                     idlist: []
           }
-          message.hour_meter.forEach((element, index) => {
+          let max_index;
+          values.forEach((element, index) => {
             let asset_id = results[0]['id'+index]
             if(asset_id !== null){
                 data.idlist.push(asset_id)
-                data.req.push(this.fiix.prepareaddMeterReading(element.value, asset_id));
+                data.req.push(this.fiix.prepareaddMeterReading(element, asset_id));
             }else{
-              console.log('Index ', index, ' is not in database');
+              console.log('id',index,' is not in database');
               var e = {
                 ErrorCode: 3,
                 index: index,
                 id: results[0].id,
-                device_id: message.device_id,
+                device_id: device_id,
                 DeviceType: DeviceType
               };
               this.eventEmitter.emit('error', e);
             }
+            max_index = index;
           });
-          
+          var ids = []
+          Object.entries(results[0]).forEach((element, index) => {
+            if(index > 1 && element[1] !== null)
+              ids.push(element[1])
+          });
+          console.log("IDs length:", ids.length)
+          console.log(max_index)
+          if(max_index < ids.length){
+            for(let i = max_index + 1; i<ids.length; i++){
+              var e = {
+                ErrorCode: 6,
+                index: i,
+                id: results[0].id,
+                asset_id: ids[i],
+                device_id: device_id,
+                DeviceType: DeviceType
+              };
+              this.eventEmitter.emit('error', e);              
+            }
+          }
+
           try{
             this.fiix.batch(data);              
           }catch{
@@ -97,47 +122,50 @@ class mqtt_subscriber{
           }
 
         }
-      }
-      var sql = 'SELECT * FROM ' + DeviceType + ' WHERE '+ (DeviceType==='linortek' ? 'MacAddress=' : 'NettraId=') + '\'' + message.device_id + '\'';
-      this.sqlpool.query(sql, function (error, results, fields) {
-
-        sqlquery(message, error, results);
-
-      });      
     }
 
+    const query = (DeviceType, message, device_id) => {
+
+      var sql = 'SELECT * FROM ' + DeviceType + ' WHERE '+ (DeviceType==='linortek' ? 'MacAddress=' : 'NettraId=') + '\'' + device_id + '\'';
+      let values = []
+
+      switch (DeviceType) {
+        case 'linortek':
+          Object.entries(message.hour_meter).forEach((element, index) => {
+            values.push(element[1].value)
+          })
+          this.sqlpool.query(sql, function (error, results, fields) {
+    
+            sqlquery(DeviceType, device_id, values, error, results);
+    
+          });   
+          break;
+      
+        case 'nettra':
+          Object.entries(message.values).forEach((element, index) => {
+            values.push(element[1])
+          })
+          this.sqlpool.query(sql, function (error, results, fields) {
+    
+            sqlquery(DeviceType, device_id, values, error, results);
+    
+          }); 
+          break;
+        default:
+          break;
+      }
+    }
     this.client.on('message', function (topic, message, packet) {
     
       var mqtt_sender = decode_topic(topic)
     
       var JSONmessage = JSON.parse(message)
-      
+      var device_id = get_Id(topic);
+
       console.log(this.fiix)
       var DeviceType = mqtt_sender === "lt1000" ? "linortek" : "nettra";
 
-
-      switch (mqtt_sender) {
-        case "lt1000":
-
-          findDeviceId(DeviceType, JSONmessage)
-
-          console.log(JSONmessage.device_id)
-          console.log(JSONmessage.hour_meter[0].value)
-          console.log(JSONmessage.hour_meter[1].value) 
-          break;
-        
-        case "nettra":
-          for (let index = 0; index < JSONmessage.devices.length; index++) {
-            console.log("Device", index + 1, " : ")
-            console.log("Asset ID : ", JSONmessage.devices[index].asset_id)
-            for (let index2 = 0; index2 < JSONmessage.devices[index].data.length; index2++) {
-              console.log("Unit ID : ", JSONmessage.devices[index].data[index2].unit_id)
-              console.log("Data :", JSONmessage.devices[index].data[index2].value)        
-            }
-          }
-        default:
-          break;
-      }
+      query(DeviceType, JSONmessage, device_id)
     })
   }
 

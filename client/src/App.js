@@ -4,7 +4,7 @@ import styles from './style.module.css'
 import './App.css'
 
 
-function Form(){
+function Form(props){
   const [inputs, setInputs] = useState({});
 
   const [status, setStatus] = useState("No Connection");
@@ -48,7 +48,7 @@ function Form(){
     const interval = setInterval(() => {
       fetch("/api/fiix/status")
       .then((res) => res.json())
-      .then((data) => setStatus(data.status));
+      .then((data) => {setStatus(data.status); props.setStatus(data.status)});
     }, 15000);
     return () => clearInterval(interval);
   },[]);
@@ -634,11 +634,12 @@ function Table(props){
 }
 
 function App() {
+  const [status, setStatus] = useState("");
 
 return(
   <>
   <div className={styles.mainDiv}>
-    <Accordion name = {"Fiix Connection Data"} children = {<Form />} />
+    <Accordion name = {"Fiix Credentials" + (status === "No Connection" ? " (" + status + ")" : "")} children = {<Form setStatus = {setStatus}/>}  />
     <Accordion name = {"Linortek"} children = {<Table idType = {"MacAddress"}/>}/>
     <Accordion name = {"Nettra"} children = {<Table idType = {"NettraId"}/>}/>
   </div>

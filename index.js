@@ -22,6 +22,7 @@ fiix.on('disconnection', () => {
   status = 'No Connection';
 });
 
+
 fiix.on('error', (e) => {
   switch (e.ErrorCode) {
     case 5:
@@ -57,12 +58,20 @@ mqttSubscriber.on('error', (e) => {
     break;
     case 3:
       error = e;
-      error.message = 'Id' + e.index + ' is missing for ' + (e.DeviceType === 'linortek' ? 'MacAddress ' : 'Nettra Id ') + e.device_id
+      error.message = 'Id' + e.index + ' is missing for ' + (e.DeviceType === 'linortek' ? 'MacAddress = ' : 'Nettra Id = ') + e.device_id
       errorList[e.DeviceType].push(error)
       console.log('Id', e.index, ' not found in Table')
       break;
     case 4:
       console.log("Credentials not set");
+      break;
+
+    case 6:
+      error = e;
+      error.message = 'id = ' + e.asset_id  + (e.DeviceType === 'linortek' ?  '(MacAddress = ' : ' (Nettra Id = ') + e.device_id + ") was not received in MQTT message"
+      errorList[e.DeviceType].push(error)
+      console.log('id = ' + e.asset_id  + (e.DeviceType === 'linortek' ? ' (MacAddress = ' : ' (Nettra Id = ') + e.device_id + ") was not received in MQTT message")
+      break;
     default:
       break;
   }
@@ -157,6 +166,11 @@ app.use(express.static(path.resolve(__dirname, './client/build')));
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
 
+app.all('*', function (req, res, next) {
+  if(req.url !== '/api/errors/linortek' && req.url !== '/api/errors/nettra' && req.url !== '/api/fiix/status')
+    console.log('Request \x1b[33m['+ req.method +']\x1b[0m', req.url)
+  next() // pass control to the next handler
+})
 
 // Handle GET requests to /api route
 app.get("/api", (req, res) => {
