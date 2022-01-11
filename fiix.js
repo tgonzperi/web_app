@@ -2,7 +2,7 @@ var events = require('events');
 
 var FiixCmmsClient = require("fiix-cmms-client");
 
-
+const sendMail = require('./mailer.js')
 
 class FiixClient{
   constructor() {
@@ -149,6 +149,10 @@ class FiixClient{
         }
         console.log('No error in transaction');
       } else {
+        if(ret.error.code === 3200){
+          sendMail(JSON.stringify(ret.error));
+          console.log("Could not apply changes due to excessive api calls")
+        }
         if(this.connected !== false){
           this.eventEmitter.emit('disconnection');
           this.connected = false;
@@ -156,13 +160,17 @@ class FiixClient{
         console.log('Not connected to Fiix');
       }
     }
+    // if(this.connected && this.credSet){
+      this.fiixCmmsClient.batch({
+        "requests": data.req,
+        "callback": function(ret){
+          f(ret, data.id, data.idlist, data.DeviceType, data.device_id);
+        }
+      });
+    // }
 
-    this.fiixCmmsClient.batch({
-      "requests": data.req,
-      "callback": function(ret){
-        f(ret, data.id, data.idlist, data.DeviceType, data.device_id);
-      }
-    });
+
+
   }
   on(event, callback)
   {

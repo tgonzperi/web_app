@@ -2,6 +2,8 @@ const mqtt = require('mqtt');
 var mysql      = require('mysql');
 var events = require('events');
 
+const sendMail = require('./mailer.js')
+
 const fiixclient = require('./fiix.js');
 
 const host = 'ec2-3-144-199-195.us-east-2.compute.amazonaws.com'
@@ -78,17 +80,21 @@ class mqtt_subscriber{
                 data.idlist.push(asset_id)
                 data.req.push(this.fiix.prepareaddMeterReading(element, asset_id));
             }else{
-              console.log('id',index,' is not in database');
-              var e = {
-                ErrorCode: 3,
-                index: index,
-                id: results[0].id,
-                device_id: device_id,
-                DeviceType: DeviceType
-              };
-              this.eventEmitter.emit('error', e);
+              if(element !== 0){
+                console.log('id',index,' is not in database');
+                var e = {
+                  ErrorCode: 3,
+                  index: index,
+                  id: results[0].id,
+                  device_id: device_id,
+                  DeviceType: DeviceType
+                };
+                this.eventEmitter.emit('error', e);
+              }
             }
-            max_index = index;
+            if(element !== 0){
+              max_index = index;
+            }
           });
           var ids = []
           Object.entries(results[0]).forEach((element, index) => {

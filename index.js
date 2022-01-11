@@ -2,6 +2,8 @@ const express = require("express");
 const path = require('path');
 const bodyParser = require('body-parser')
 
+const sendMail = require('./mailer.js')
+
 const fiixclient = require("./fiix.js");
 
 var mysql      = require('mysql');
@@ -51,26 +53,32 @@ mqttSubscriber.on('error', (e) => {
       console.log('SQL Error')
       break;
     case 2:
-      error = e
-      error.message = (e.DeviceType === 'linortek' ? 'MacAddress ' : 'Nettra Id ') + e.device_id + ' not found in table'
-      errorList[e.DeviceType].push(error)
-      console.log('Device id ', e.device_id, ' not found in Table')
+      if(errorList[e.DeviceType].filter((elem) => elem.device_id === e.device_id).length === 0){
+        error = e
+        error.message = (e.DeviceType === 'linortek' ? 'MacAddress ' : 'Nettra Id ') + e.device_id + ' not found in table'
+        errorList[e.DeviceType].push(error)
+        console.log('Device id ', e.device_id, ' not found in Table')
+      }
     break;
     case 3:
-      error = e;
-      error.message = 'Id' + e.index + ' is missing for ' + (e.DeviceType === 'linortek' ? 'MacAddress = ' : 'Nettra Id = ') + e.device_id
-      errorList[e.DeviceType].push(error)
-      console.log('Id', e.index, ' not found in Table')
+      if(errorList[e.DeviceType].filter((elem) => elem.id === e.id).length === 0){
+        error = e;
+        error.message = 'Id' + e.index + ' is missing for ' + (e.DeviceType === 'linortek' ? 'MacAddress = ' : 'Nettra Id = ') + e.device_id
+        errorList[e.DeviceType].push(error)
+        console.log('Id', e.index, ' not found in Table')
+      }
       break;
     case 4:
       console.log("Credentials not set");
       break;
 
     case 6:
-      error = e;
-      error.message = 'id = ' + e.asset_id  + (e.DeviceType === 'linortek' ?  '(MacAddress = ' : ' (Nettra Id = ') + e.device_id + ") was not received in MQTT message"
-      errorList[e.DeviceType].push(error)
-      console.log('id = ' + e.asset_id  + (e.DeviceType === 'linortek' ? ' (MacAddress = ' : ' (Nettra Id = ') + e.device_id + ") was not received in MQTT message")
+      if(errorList[e.DeviceType].filter((elem) => elem.asset_id === e.asset_id && elem.device_id === e.device_id).length === 0){
+        error = e;
+        error.message = 'id = ' + e.asset_id  + (e.DeviceType === 'linortek' ?  '(MacAddress = ' : ' (Nettra Id = ') + e.device_id + ") was not received in MQTT message"
+        errorList[e.DeviceType].push(error)
+        console.log('id = ' + e.asset_id  + (e.DeviceType === 'linortek' ? ' (MacAddress = ' : ' (Nettra Id = ') + e.device_id + ") was not received in MQTT message")
+      }
       break;
     default:
       break;
@@ -154,6 +162,24 @@ function checkWrongId(id, DeviceType, asset_idList=[]){
   })
 }
 
+function checkExtraId(id, DeviceType, asset_idList=[]){
+  errorList[DeviceType].forEach((el, ind) => {
+    if(el.ErrorCode === 6 && el.id === id){
+      if(asset_idList.length === 0){
+        console.log('Extra Id line deleted');
+        errorList[DeviceType].splice(ind, 1);
+      }else{
+        if(asset_idList.length <= el.index){
+          console.log('Extra Id deleted');
+          errorList[DeviceType].splice(ind, 1);
+        }
+
+      }
+
+    }
+  })
+}
+
 
 const PORT = process.env.PORT || 80;
 
@@ -217,16 +243,17 @@ app.post("/api/add_mqtt/:DeviceType", (req, res) => {
   sql+= ') VALUES (?, ?' + sqlfin;
 
   checkDeviceId(DeviceType,key_val[0][1])
-  try{
+  
   let values = [ data.id, key_val[0][1]]
   mqttSubscriber.sqlpool.query(sql, values.concat(asset_list), function (err, result) {
-    if (err) throw err;
-    console.log("1 record inserted");
+    try{
+      if (err) throw err;
+      console.log("1 record inserted");
+    }catch(e){
+      sendMail(JSON.stringify(e));
+    }
   });
-  }catch(error){
-  console.log("Error : ", error.code)
-  console.log("Error No: ", error.errno)
-  }
+
   res.end();
 });
 
@@ -246,11 +273,19 @@ app.post("/api/edit_mqtt/:DeviceType", (req, res) => {
   checkWrongId(parseInt(data.id), DeviceType,asset_list);
   checkMissingId(parseInt(data.id), DeviceType, asset_list.length - 1);
   checkDeviceId(DeviceType, key_val[0][1])
+  checkExtraId(parseInt(data.id), DeviceType, asset_list)
   var sql = 'UPDATE ' + DeviceType + ' SET ' + key_val[0][0] + '=?, id0=?, id1=?, id2=?, id3=? WHERE id=' + data.id;
-  mqttSubscriber.sqlpool.query(sql,[key_val[0][1], data.data.id0, data.data.id1, data.data.id2, data.data.id3 ], function (err, result) {
-    if (err) throw err;
-    console.log("1 record updated");
-  });
+  
+    mqttSubscriber.sqlpool.query(sql,[key_val[0][1], data.data.id0 !== '' ? data.data.id0 : null, data.data.id1 !== '' ? data.data.id1 : null, data.data.id2 !== '' ? data.data.id2 : null, data.data.id3 !== '' ? data.data.id3 : null ], function (err, result) {
+      try{
+        if (err) throw err;
+        console.log("1 record updated");
+      }catch(e){
+        sendMail(JSON.stringify(e));
+      }
+    });
+
+
   res.end();
 });
 
@@ -260,11 +295,16 @@ app.post("/api/rm_mqtt/:DeviceType", (req, res) => {
 
   checkMissingId(parseInt(data.id), DeviceType, data.device_id);
   checkWrongId(parseInt(data.id), DeviceType);
+  checkExtraId(parseInt(data.id), DeviceType)
   var sql = "DELETE FROM " + DeviceType +" WHERE id=" +data.id;
 
   mqttSubscriber.sqlpool.query(sql, function (error, results, fields) {
-    if (error) throw Error;
-    console.log("Records with id = ", data.id, "deleted");
+    try{
+      if (error) throw error;
+      console.log("Records with id = ", data.id, "deleted");
+    }catch(e){
+      sendMail(JSON.stringify(e));
+    }
   });
 
   res.end();
@@ -279,8 +319,12 @@ app.post("/api/rm_all_mqtt/:DeviceType", (req, res) => {
 
 
   mqttSubscriber.sqlpool.query(sql, function (error, results, fields) {
-    if (error) throw Error;
-    console.log("All records deleted");
+    try{
+      if (error) throw error;
+      console.log("All records deleted");
+    }catch(e){
+      sendMail(JSON.stringify(e));
+    }
   });
 
   res.end();
@@ -297,9 +341,14 @@ app.post("/api/mqtt/:DeviceType", (req,res) => {
   var DeviceType = req.params.DeviceType;
 
   mqttSubscriber.sqlpool.query('SELECT * FROM ' + DeviceType, function (error, results, fields) {
-    if (error) throw Error;
-    res.json(results);
-    res.end();
+    try{
+      if (error) throw error;
+      res.json(results);
+      res.end();
+    }catch(e){
+      sendMail(JSON.stringify(e));
+      res.end();
+      }
   });
 })
 
