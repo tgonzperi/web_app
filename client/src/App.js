@@ -122,7 +122,7 @@ function Input(props)
         <input
         id="id0"
         name={props.id || "id0"}
-        type="text"
+        type="number"
         value={props.inputs.id0 || ""}
         onChange={props.handleChange}
         /> 
@@ -131,7 +131,7 @@ function Input(props)
         <input
         id="id1"
         name={props.id || "id1"}
-        type="text"
+        type="number"
         value={props.inputs.id1 || ""}
         onChange={props.handleChange}
         /> 
@@ -140,7 +140,7 @@ function Input(props)
         <input
         id="id2"
         name={props.id || "id2"}
-        type="text"
+        type="number"
         value={props.inputs.id2 || ""}
         onChange={props.handleChange}
         /> 
@@ -149,7 +149,7 @@ function Input(props)
         <input
         id="id3"
         name={props.id || "id3"}
-        type="text"
+        type="number"
         value={props.inputs.id3 || ""}
         onChange={props.handleChange}
         /> 
@@ -357,13 +357,14 @@ function Table(props){
     if(inputs2[props.idType] === '' || inputs2.id0 === ''){
       alert(props.idType + ' and id0 are required')
     }else{
+      console.log("inputs : ", inputs2.id1);
     var newComponent = {id: id, device_id: device_id, 
       component: <tr>
       <td>{inputs2[props.idType]}</td>
-      <td>{inputs2.id0}</td>
-      <td>{inputs2.id1}</td>
-      <td>{inputs2.id2}</td>
-      <td>{inputs2.id3}</td>
+      <td>{inputs2.id0 || ""}</td>
+      <td>{inputs2.id1 || ""}</td>
+      <td>{inputs2.id2 || ""}</td>
+      <td>{inputs2.id3 || ""}</td>
       <td><button style={{margin:"2px 0px"}} name={'edit'+id} onClick = {editLine}>Edit</button><button style={{padding:"2px 0px"}} name={'delete'+id} onClick = {removeLine}>Delete</button></td>
     </tr>}
 
