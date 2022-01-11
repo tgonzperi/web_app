@@ -1,0 +1,24 @@
+Server listening on 80
+Connected
+Subscribe to topic 'nettra/#'
+Subscribe to topic 'lt1000/#'
+undefined
+IDs length: 3
+1
+id = 7070790 (Nettra Id = nettra1) was not received in MQTT message
+Credentials not set
+/home/tomas/Documents/360Ing/web_app/node_modules/mysql/lib/protocol/Parser.js:437
+      throw err; // Rethrow non-MySQL errors
+      ^
+
+TypeError: Cannot read properties of undefined (reading 'push')
+    at EventEmitter.<anonymous> (/home/tomas/Documents/360Ing/web_app/index.js:72:31)
+    at EventEmitter.emit (node:events:390:28)
+    at sqlquery (/home/tomas/Documents/360Ing/web_app/mqtt_subscriber.js:120:33)
+    at Query.<anonymous> (/home/tomas/Documents/360Ing/web_app/mqtt_subscriber.js:150:13)
+    at Query.<anonymous> (/home/tomas/Documents/360Ing/web_app/node_modules/mysql/lib/Connection.js:526:10)
+    at Query._callback (/home/tomas/Documents/360Ing/web_app/node_modules/mysql/lib/Connection.js:488:16)
+    at Query.Sequence.end (/home/tomas/Documents/360Ing/web_app/node_modules/mysql/lib/protocol/sequences/Sequence.js:83:24)
+    at Query._handleFinalResultPacket (/home/tomas/Documents/360Ing/web_app/node_modules/mysql/lib/protocol/sequences/Query.js:149:8)
+    at Query.EofPacket (/home/tomas/Documents/360Ing/web_app/node_modules/mysql/lib/protocol/sequences/Query.js:133:8)
+    at Protocol._parsePacket (/home/tomas/Documents/360Ing/web_app/node_modules/mysql/lib/protocol/Protocol.js:291:23)
