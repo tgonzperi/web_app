@@ -352,6 +352,17 @@ app.post("/api/mqtt/:DeviceType", (req,res) => {
   });
 })
 
+app.post('/api/login', (req, res) => {
+  var logindata = req.body;
+  console.log(logindata)
+  if(logindata.username === 'admin' && logindata.password === 'admin'){
+    res.json({result: 1});
+  }else{
+    res.json({result: 0});
+  }
+  res.end();
+  
+})
 // All other GET requests not handled before will return our React app
 app.get('*', (req, res) => {
   res.sendFile(path.resolve(__dirname, './client/build', 'index.html'));
