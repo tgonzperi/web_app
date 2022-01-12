@@ -8,7 +8,9 @@ const fiixclient = require("./fiix.js");
 
 var mysql      = require('mysql');
 
-var status = "No Connection";
+var formstatus = {
+  status: "No Connection",
+};
 
 var errorList = {
   linortek: [],
@@ -17,11 +19,11 @@ var errorList = {
 var fiix = new fiixclient().getInstance();
 
 fiix.on('connection', () => {
-  status = 'Connection Established';
+  formstatus.status = 'Connection Established';
 });
 
 fiix.on('disconnection', () => {
-  status = 'No Connection';
+  formstatus.status = 'No Connection';
 });
 
 
@@ -205,7 +207,7 @@ app.get("/api", (req, res) => {
 });
 
 app.get("/api/fiix/status", (req, res) => {
-  res.json({status: status});
+  res.json(formstatus);
   res.end();
 });
 
@@ -213,6 +215,7 @@ app.get("/api/fiix/status", (req, res) => {
 app.post("/api/fiix/form", (req, res) => {
   var data = req.body;
   fiix.setCoords(data.BaseURI, data.APPKey, data.AuthToken, data.PKey);
+  formstatus = Object.assign(formstatus, data);
   fiix.connectFiix();
   res.end();
 });

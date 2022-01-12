@@ -3,6 +3,8 @@ import './InputForm.css'
 
 function Form(props){
     const [inputs, setInputs] = useState({});
+
+    const [inputsPlaceHolder, setInputsPlaceHolder] = useState({})
   
     const [status, setStatus] = useState("No Connection");
   
@@ -18,11 +20,14 @@ function Form(props){
   
     const handleSubmit = (event) => {
       event.preventDefault();
+      
       const form = event.target;
       const data = new FormData(form);
       var data2send = {};
       for(let id of [...data]){
+        console.log("Form :", id[0], id[1])
         data2send[id[0]] = id[1];
+        setInputsPlaceHolder(values => ({...values, [id[0]]: id[1]}))
       }
       console.log(data2send)
       fetch('/api/fiix/form', {
@@ -41,7 +46,15 @@ function Form(props){
     useEffect(() => {
       fetch("/api/fiix/status")
       .then((res) => res.json())
-      .then((data) => setStatus(data.status));
+      .then((data) => {
+        setStatus(data.status);
+        Object.entries(data).forEach((elem, index) => {
+          console.log(data)
+          if(index !== 0){
+            setInputsPlaceHolder(values => ({...values, [elem[0]]: elem[1]}))
+          }
+        })
+      });
       const interval = setInterval(() => {
         fetch("/api/fiix/status")
         .then((res) => res.json())
@@ -63,6 +76,7 @@ function Form(props){
           name="BaseURI" 
           value={inputs.BaseURI || ""} 
           onChange={handleChange}
+          placeholder={inputsPlaceHolder.BaseURI || ""} 
           required
         /><br/>
         <label for="APPKey">Enter APPKey: </label><br/>
@@ -73,6 +87,7 @@ function Form(props){
             name="APPKey" 
             value={inputs.APPKey || ""} 
             onChange={handleChange}
+            placeholder={inputsPlaceHolder.APPKey || ""} 
             required
           /><br/>
         <label for="AuthToken">Enter AuthToken: </label><br/>
@@ -83,6 +98,7 @@ function Form(props){
             name="AuthToken" 
             value={inputs.AuthToken || ""} 
             onChange={handleChange}
+            placeholder={inputsPlaceHolder.AuthToken || ""} 
             required
           /><br/>
         <label for="PKey">Enter PKey: </label><br/>
@@ -93,6 +109,7 @@ function Form(props){
             name="PKey" 
             value={inputs.PKey || ""} 
             onChange={handleChange}
+            placeholder={inputsPlaceHolder.PKey || ""} 
             required
           /><br/>
           {/* <h5 style={{width: "50%", margin: 0 }}> Connection {status}</h5> */}
