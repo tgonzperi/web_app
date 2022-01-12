@@ -23,6 +23,19 @@ class mqtt_subscriber{
       database : '360ing_db'
     });
 
+    const errorChecker = (error, results) => {
+      if(error){
+        console.log('Wrong Database');
+        this.eventEmitter.emit('error', {ErrorCode: 7});
+      }
+      console.log(results)
+    }
+    this.sqlpool.query('SHOW TABLES', function (error, results, fields) {
+    
+      errorChecker(error, results);
+
+    });   
+
     this.client = mqtt.connect(connectUrl, {
       clean: true,
       connectTimeout: 4000,
@@ -57,7 +70,7 @@ class mqtt_subscriber{
 
       const sqlquery = (DeviceType, device_id, values, error, results) => {
         
-        if (error) this.eventEmitter.emit('error', {ErrorCode: 1});
+        if (error) {this.eventEmitter.emit('error', {ErrorCode: 1}); return}
         if (results.length === 0){
           console.log('Device Id not found')
           var e = {
