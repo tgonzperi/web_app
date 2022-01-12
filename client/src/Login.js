@@ -16,7 +16,7 @@ function Login(props){
           .then((res) => res.json())
           .then((data) => {
             if(data.result){
-                props.handler(55);
+                props.handler(data.company);
             }
           });
     }

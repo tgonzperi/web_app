@@ -11,18 +11,18 @@ import './App.css'
 
 function App() {
   const [status, setStatus] = useState("");
-  const [updateMain, setUpdateMain] = useState(false);
-  const update = (id) => {
-    setUpdateMain(true);
+  const [company, setCompany] = useState("");
+  const update = (company) => {
+    setCompany(company)
   }
 
 return(
   <>
   <div className={styles.mainDiv}>
-    {updateMain ? <>
-    <Accordion name = {"Fiix Credentials" + (status === "No Connection" ? " (" + status + ")" : "")} children = {<Form setStatus = {setStatus}/>}  />
-    <Accordion name = {"Linortek"} children = {<IdTable idType = {"MacAddress"}/>}/>
-    <Accordion name = {"Nettra"} children = {<IdTable idType = {"NettraId"}/>}/>
+    {company!== "" ? <>
+    <Accordion name = {"Fiix Credentials" + (status === "No Connection" ? " (" + status + ")" : "")} children = {<Form setStatus = {setStatus} company = {company}/> }  />
+    <Accordion name = {"Linortek"} children = {<IdTable idType = {"MacAddress"} company = {company}/>} />
+    <Accordion name = {"Nettra"} children = {<IdTable idType = {"NettraId"} company = {company}/>} />
     </>
     :
     <Login handler={update}/>}

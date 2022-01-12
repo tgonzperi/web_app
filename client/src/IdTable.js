@@ -22,7 +22,11 @@ function IdTable(props){
     stateRef.current = columns;
   
     useEffect(() => {
-      fetch("/api/errors/" + DeviceType)
+      fetch("/api/errors/" + DeviceType, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({company: props.company})
+      })
       .then((res) => res.json())
       .then((data) => {
         console.log(data)
@@ -40,7 +44,11 @@ function IdTable(props){
       })
   
       const interval = setInterval(() => {
-        fetch("/api/errors/" + DeviceType)
+        fetch("/api/errors/" + DeviceType, {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({company: props.company})
+        })
         .then((res) => res.json())
         .then((data) => {
           if(data.length === 0) setShowErrors(false);
@@ -56,11 +64,13 @@ function IdTable(props){
   
         })
       }, 8000);
-    },[DeviceType])
+    },[DeviceType, props.company])
   
     useEffect(()=> {
       fetch("/api/mqtt/" + DeviceType , {
-        method: 'POST'
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({company: props.company})
       })
       .then((res) => res.json())
       .then((data) => {
@@ -71,7 +81,7 @@ function IdTable(props){
             id: el.id,
             component: 
             <tr>
-              <td>{el[props.idType]}</td>
+              <td>{el.device_id}</td>
               <td>{el.id0}</td>
               <td>{el.id1}</td>
               <td>{el.id2}</td>
@@ -85,7 +95,7 @@ function IdTable(props){
   
         setColumns(columns2add);
       })   
-    },[DeviceType, props.idType])
+    },[DeviceType, props.idType, props.company])
   
   
   
@@ -159,6 +169,7 @@ function IdTable(props){
   
       var data2send = {
         id: id,
+        company: props.company,
         data: inputs2
       };
   
@@ -284,7 +295,7 @@ function IdTable(props){
       var element = stateRef.current.find((elem) => 'delete'+elem.id == name);
       
       console.log(element)
-      var data2send = {id: element.id, device_id: element.device_id};
+      var data2send = {id: element.id, device_id: element.device_id, company: props.company};
   
       fetch('/api/rm_mqtt/' + DeviceType, {
         method: 'POST',
@@ -301,7 +312,8 @@ function IdTable(props){
   
       fetch('/api/rm_all_mqtt/' + DeviceType, {
         method: 'POST',
-        headers: {'Content-Type': 'application/json'}
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({company: props.company})
       });  
     }
   
@@ -332,6 +344,7 @@ function IdTable(props){
   
         var data2send = {
           id: id,
+          company: props.company,
           data: inputs
         };
   

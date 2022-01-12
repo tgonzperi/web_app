@@ -68,7 +68,7 @@ class mqtt_subscriber{
       return topic.slice(index_bar+1);      
     }
 
-      const sqlquery = (DeviceType, device_id, values, error, results) => {
+      const sqlquery = (DeviceType, device_id, values, error, results, company) => {
         
         if (error) {this.eventEmitter.emit('error', {ErrorCode: 1}); return}
         if (results.length === 0){
@@ -84,7 +84,8 @@ class mqtt_subscriber{
                     device_id: device_id,
                     DeviceType: DeviceType,
                     req: [],
-                    idlist: []
+                    idlist: [],
+                    company: company
           }
           let max_index;
           values.forEach((element, index) => {
@@ -100,7 +101,8 @@ class mqtt_subscriber{
                   index: index,
                   id: results[0].id,
                   device_id: device_id,
-                  DeviceType: DeviceType
+                  DeviceType: DeviceType,
+                  company: company
                 };
                 this.eventEmitter.emit('error', e);
               }
@@ -111,7 +113,7 @@ class mqtt_subscriber{
           });
           var ids = []
           Object.entries(results[0]).forEach((element, index) => {
-            if(index > 1 && element[1] !== null)
+            if(index > 2 && element[1] !== null)
               ids.push(element[1])
           });
           console.log("IDs length:", ids.length)
@@ -124,7 +126,8 @@ class mqtt_subscriber{
                 id: results[0].id,
                 asset_id: ids[i],
                 device_id: device_id,
-                DeviceType: DeviceType
+                DeviceType: DeviceType,
+                company: company
               };
               this.eventEmitter.emit('error', e);              
             }
@@ -132,11 +135,14 @@ class mqtt_subscriber{
 
           try{
             this.fiix.batch(data);              
-          }catch{
+          }catch(err){
               var e = {
-                ErrorCode: 4
+                error: err,
+                ErrorCode: 4,
+                company: company
               }
               this.eventEmitter.emit('error', e);
+              sendMail(JSON.stringify(e));
               return;
           }
 
@@ -145,34 +151,35 @@ class mqtt_subscriber{
 
     const query = (DeviceType, message, device_id) => {
 
-      var sql = 'SELECT * FROM ' + DeviceType + ' WHERE '+ (DeviceType==='linortek' ? 'MacAddress=' : 'NettraId=') + '\'' + device_id + '\'';
+      var find_company = 'SELECT (company) FROM company_device_id WHERE device_id=' + '\'' + device_id + '\'';
       let values = []
-
       switch (DeviceType) {
         case 'linortek':
           Object.entries(message.hour_meter).forEach((element, index) => {
             values.push(element[1].value)
           })
-          this.sqlpool.query(sql, function (error, results, fields) {
-    
-            sqlquery(DeviceType, device_id, values, error, results);
-    
-          });   
+          
           break;
       
         case 'nettra':
           Object.entries(message.values).forEach((element, index) => {
             values.push(element[1])
           })
-          this.sqlpool.query(sql, function (error, results, fields) {
-    
-            sqlquery(DeviceType, device_id, values, error, results);
-    
-          }); 
           break;
         default:
           break;
       }
+
+      const find_line_in_company_table = (sql_query, company) => {
+        this.sqlpool.query(sql_query, (err,res) => {
+          sqlquery(DeviceType, device_id, values, err, res, company);
+        })
+      }
+      this.sqlpool.query(find_company, function(error, results) {
+        var sql = 'SELECT * FROM ' + results[0].company + ' WHERE device_id='+ '\'' + device_id + '\'';
+        find_line_in_company_table(sql, results[0].company);
+      })
+
     }
     this.client.on('message', function (topic, message, packet) {
     

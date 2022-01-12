@@ -5,11 +5,12 @@ var FiixCmmsClient = require("fiix-cmms-client");
 const sendMail = require('./mailer.js')
 
 class FiixClient{
-  constructor() {
+  constructor(company) {
     this.fiixCmmsClient = new FiixCmmsClient();
     this.eventEmitter = new events.EventEmitter();
     this.connected = false;
     this.credSet = false;
+    this.company = company;
   }
 
   setCoords(BaseUri, AppKey, AuthToken, PKey)
@@ -178,17 +179,19 @@ class FiixClient{
   }
 }
 
-class Singleton{
-  constructor() {
-    if (!Singleton.instance) {
-        Singleton.instance = new FiixClient();
-    }
-  }
+// class Singleton{
+//   constructor() {
+//     if (!Singleton.instance) {
+//         Singleton.instance = new FiixClient();
+//     }
+//   }
 
-  getInstance() {
-    return Singleton.instance;
-  }
-}
+//   getInstance() {
+//     return Singleton.instance;
+//   }
+// }
 
 
-module.exports = Singleton;
+// module.exports = Singleton;
+
+module.exports = FiixClient;
