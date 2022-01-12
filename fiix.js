@@ -113,7 +113,7 @@ class FiixClient{
       "intMeterReadingUnitsID": 11702, // Hours id
       "dblMeterReading": value,
       "intAssetID": asset_id,
-      "dtmDateSubmitted": 1638152560000
+      "dtmDateSubmitted": Date.now()
     }
 
     return this.fiixCmmsClient.prepareAdd({
