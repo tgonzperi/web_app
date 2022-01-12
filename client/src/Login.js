@@ -1,5 +1,6 @@
 import './Login.css'
 import { useState, useEffect} from "react";
+import logo from './logo1.jpeg'
 
 
 function Login(props){
@@ -30,8 +31,9 @@ function Login(props){
     return(
         <>
         <form onSubmit={handleSubmit} >
-            <div class="box">
-                <h1>Login Form</h1>
+            <div className="box">
+                <img src={logo} alt="360 Ingenieria"/>
+                <h1>Machine Integration Login</h1>
                 <input className="username" name="username" type="text" placeholder="User Name" onChange={handleChange} value={inputs.username || ""} required />
                 <input className="username" name="password" type="password" placeholder="Password" onChange={handleChange} value={inputs.password || ""} required/>
                 <input className="buttonLogin" type="submit"/>
