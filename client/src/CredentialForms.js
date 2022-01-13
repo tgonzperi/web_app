@@ -29,6 +29,7 @@ function Form(props){
         data2send[id[0]] = id[1];
         setInputsPlaceHolder(values => ({...values, [id[0]]: id[1]}))
       }
+      data2send.company = props.company;
       console.log(data2send)
       fetch('/api/fiix/form', {
         method: 'POST',
@@ -44,7 +45,11 @@ function Form(props){
     }
   
     useEffect(() => {
-      fetch("/api/fiix/status")
+      fetch("/api/fiix/status",{
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({company: props.company})
+      })
       .then((res) => res.json())
       .then((data) => {
         setStatus(data.status);
@@ -56,12 +61,16 @@ function Form(props){
         })
       });
       const interval = setInterval(() => {
-        fetch("/api/fiix/status")
+        fetch("/api/fiix/status",{
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({company: props.company})
+        })
         .then((res) => res.json())
         .then((data) => {setStatus(data.status); props.setStatus(data.status)});
       }, 15000);
       return () => clearInterval(interval);
-    },[]);
+    },[props.company]);
     
   
   

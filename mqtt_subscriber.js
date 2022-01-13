@@ -14,7 +14,7 @@ const connectUrl = `mqtt://${host}:${port}`
 class mqtt_subscriber{
   constructor(){
     this.eventEmitter = new events.EventEmitter();
-    this.fiix = new fiixclient().getInstance();
+    this.fiix = [new fiixclient('company1'), new fiixclient('company2')];
     this.sqlpool = mysql.createPool({
       connectionLimit: 10,
       host     : 'localhost',
@@ -28,7 +28,6 @@ class mqtt_subscriber{
         console.log('Wrong Database');
         this.eventEmitter.emit('error', {ErrorCode: 7});
       }
-      console.log(results)
     }
     this.sqlpool.query('SHOW TABLES', function (error, results, fields) {
     
@@ -68,9 +67,10 @@ class mqtt_subscriber{
       return topic.slice(index_bar+1);      
     }
 
-      const sqlquery = (DeviceType, device_id, values, error, results) => {
+      const sqlquery = (DeviceType, device_id, values, error, results, company) => {
         
         if (error) {this.eventEmitter.emit('error', {ErrorCode: 1}); return}
+        let fiixObject = this.fiix.find((elem) => elem.company === company)
         if (results.length === 0){
           console.log('Device Id not found')
           var e = {
@@ -84,14 +84,15 @@ class mqtt_subscriber{
                     device_id: device_id,
                     DeviceType: DeviceType,
                     req: [],
-                    idlist: []
+                    idlist: [],
+                    company: company
           }
           let max_index;
           values.forEach((element, index) => {
             let asset_id = results[0]['id'+index]
             if(asset_id !== null){
                 data.idlist.push(asset_id)
-                data.req.push(this.fiix.prepareaddMeterReading(element, asset_id));
+                data.req.push(fiixObject.prepareaddMeterReading(element, asset_id));
             }else{
               if(element !== 0){
                 console.log('id',index,' is not in database');
@@ -100,7 +101,8 @@ class mqtt_subscriber{
                   index: index,
                   id: results[0].id,
                   device_id: device_id,
-                  DeviceType: DeviceType
+                  DeviceType: DeviceType,
+                  company: company
                 };
                 this.eventEmitter.emit('error', e);
               }
@@ -111,11 +113,9 @@ class mqtt_subscriber{
           });
           var ids = []
           Object.entries(results[0]).forEach((element, index) => {
-            if(index > 1 && element[1] !== null)
+            if(index > 2 && element[1] !== null)
               ids.push(element[1])
           });
-          console.log("IDs length:", ids.length)
-          console.log(max_index)
           if(max_index < ids.length){
             for(let i = max_index + 1; i<ids.length; i++){
               var e = {
@@ -124,19 +124,24 @@ class mqtt_subscriber{
                 id: results[0].id,
                 asset_id: ids[i],
                 device_id: device_id,
-                DeviceType: DeviceType
+                DeviceType: DeviceType,
+                company: company
               };
               this.eventEmitter.emit('error', e);              
             }
           }
 
           try{
-            this.fiix.batch(data);              
-          }catch{
+            if(fiixObject.credSet)
+              fiixObject.batch(data);              
+          }catch(err){
               var e = {
-                ErrorCode: 4
+                error: err,
+                ErrorCode: 4,
+                company: company
               }
               this.eventEmitter.emit('error', e);
+              sendMail(JSON.stringify(e));
               return;
           }
 
@@ -145,43 +150,44 @@ class mqtt_subscriber{
 
     const query = (DeviceType, message, device_id) => {
 
-      var sql = 'SELECT * FROM ' + DeviceType + ' WHERE '+ (DeviceType==='linortek' ? 'MacAddress=' : 'NettraId=') + '\'' + device_id + '\'';
+      var find_company = 'SELECT (company) FROM company_device_id WHERE device_id=' + '\'' + device_id + '\'';
       let values = []
-
       switch (DeviceType) {
         case 'linortek':
           Object.entries(message.hour_meter).forEach((element, index) => {
             values.push(element[1].value)
           })
-          this.sqlpool.query(sql, function (error, results, fields) {
-    
-            sqlquery(DeviceType, device_id, values, error, results);
-    
-          });   
+          
           break;
       
         case 'nettra':
           Object.entries(message.values).forEach((element, index) => {
             values.push(element[1])
           })
-          this.sqlpool.query(sql, function (error, results, fields) {
-    
-            sqlquery(DeviceType, device_id, values, error, results);
-    
-          }); 
           break;
         default:
           break;
       }
+
+      const find_line_in_company_table = (sql_query, company) => {
+        this.sqlpool.query(sql_query, (err,res) => {
+          sqlquery(DeviceType, device_id, values, err, res, company);
+        })
+      }
+      this.sqlpool.query(find_company, function(error, results) {
+        var sql = 'SELECT * FROM idTable WHERE device_id='+ '\'' + device_id + '\' AND company=\'' + results[0].company + '\'';
+        find_line_in_company_table(sql, results[0].company);
+      })
+
     }
     this.client.on('message', function (topic, message, packet) {
     
       var mqtt_sender = decode_topic(topic)
     
       var JSONmessage = JSON.parse(message)
+
       var device_id = get_Id(topic);
 
-      console.log(this.fiix)
       var DeviceType = mqtt_sender === "lt1000" ? "linortek" : "nettra";
 
       query(DeviceType, JSONmessage, device_id)

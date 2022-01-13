@@ -5,11 +5,17 @@ var FiixCmmsClient = require("fiix-cmms-client");
 const sendMail = require('./mailer.js')
 
 class FiixClient{
-  constructor() {
+  constructor(company) {
     this.fiixCmmsClient = new FiixCmmsClient();
     this.eventEmitter = new events.EventEmitter();
     this.connected = false;
     this.credSet = false;
+    this.company = company;
+    this.errors = 
+    {
+      linortek: [],
+      nettra: []
+    }
   }
 
   setCoords(BaseUri, AppKey, AuthToken, PKey)
@@ -65,7 +71,6 @@ class FiixClient{
         let i = 0;
         for(let el of ret.responses){
           if(!el.object) { 
-            console.log('Wrong ID : ', i);
             var e = {
               ErrorCode: 5,
               index: i,
@@ -134,7 +139,6 @@ class FiixClient{
         let i = 0;
         for(let el of ret.responses){
           if(el.error) { 
-            console.log('Wrong ID : ', i);
             var e = {
               ErrorCode: 5,
               index: i,
@@ -147,7 +151,7 @@ class FiixClient{
           }//SendWrongIDMessage()
           i++;
         }
-        console.log('No error in transaction');
+        console.log('Data uploaded');
       } else {
         if(ret.error.code === 3200){
           sendMail(JSON.stringify(ret.error));
@@ -157,7 +161,7 @@ class FiixClient{
           this.eventEmitter.emit('disconnection');
           this.connected = false;
         }
-        console.log('Not connected to Fiix');
+        console.log('Not connected to Fiix (Data could not be uploaded');
       }
     }
     // if(this.connected && this.credSet){
@@ -178,17 +182,19 @@ class FiixClient{
   }
 }
 
-class Singleton{
-  constructor() {
-    if (!Singleton.instance) {
-        Singleton.instance = new FiixClient();
-    }
-  }
+// class Singleton{
+//   constructor(company) {
+//     if (!Singleton.instance) {
+//         Singleton.instance = new FiixClient(company);
+//     }
+//   }
 
-  getInstance() {
-    return Singleton.instance;
-  }
-}
+//   getInstance() {
+//     return Singleton.instance;
+//   }
+// }
 
 
-module.exports = Singleton;
+// module.exports = Singleton;
+
+module.exports = FiixClient;
