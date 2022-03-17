@@ -426,9 +426,19 @@ app.post('/api/register/rm_all', (req, res) => {
   res.end();
 });
 
-app.post('/api/:source/fetch', (req, res) => {
+app.post('/api/company/fetch', (req, res) => {
   var sql = 'SELECT * FROM company_table WHERE Company=?'
   mqttSubscriber.sqlpool.query(sql,[req.body.company], (errors, results) => {
+    if (errors) throw errors;
+    res.json(results)
+    console.log(results)
+    res.end();
+  })
+})
+
+app.post('/api/register/fetch', (req, res) => {
+  var sql = 'SELECT * FROM company_table'
+  mqttSubscriber.sqlpool.query(sql, (errors, results) => {
     if (errors) throw errors;
     res.json(results)
     console.log(results)
