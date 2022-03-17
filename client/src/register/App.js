@@ -1,7 +1,9 @@
 import logo from './logo.svg';
 import './App.css';
 import Login from './Login';
-import styles from '../../client/src/style.module.css'
+import styles from './style.module.css'
+import Register from './Register'
+import { useState, useRef, useEffect} from "react";
 
 function App() {
 

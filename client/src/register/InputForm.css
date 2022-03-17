@@ -1,0 +1,18 @@
+.InputForm{
+    width: 100%;
+    padding: 12px 20px;
+    margin: 8px 0;
+    box-sizing: border-box;
+}
+
+.submitForm{
+  width: 10%;
+  height: 40px;
+  margin-left: auto;
+  margin-right: 0;
+  margin-top: auto;
+  box-sizing: border-box;
+  display: inline;
+  float: right;
+  vertical-align: baseline;
+}

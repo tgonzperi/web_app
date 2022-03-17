@@ -203,7 +203,7 @@ app.post("/api/fiix/status", (req, res) => {
   let data2send = 
   {
     status: fiixObject.connected ? "Connection Established" : "No Connection",
-    BaseURI: fiixObject.BaseURI,
+    BaseURI: fiixObject.BaseUri,
     APPKey: fiixObject.AppKey,
     AuthToken: fiixObject.AuthToken,
     PKey: fiixObject.PKey
@@ -214,11 +214,20 @@ app.post("/api/fiix/status", (req, res) => {
 
 // Handle GET requests to /api route
 app.post("/api/fiix/form", (req, res) => {
+  const callback = (connected) => {
+    let data2send = 
+    {
+      status: connected ? "Connection Established" : "No Connection"
+    }
+    res.json(data2send)
+    res.end();
+  }
+
   var data = req.body;
   var fiixObject = mqttSubscriber.fiix.find((elem) => elem.company === data.company)  
   fiixObject.setCoords(data.BaseURI, data.APPKey, data.AuthToken, data.PKey);
-  fiixObject.connectFiix();
-  res.end();
+  fiixObject.connectFiix(callback);
+ 
 });
 
 app.post("/api/add_mqtt/:DeviceType", (req, res) => {
@@ -363,11 +372,11 @@ app.post("/api/mqtt/:DeviceType", (req,res) => {
 app.post('/api/login', (req, res) => {
   var logindata = req.body;
   var response = {}
-  mqttSubscriber.sqlpool.query('SELECT * FROM company_table WHERE username=? AND password=?', [logindata.username, logindata.password], (error, results)=> {
+  mqttSubscriber.sqlpool.query('SELECT * FROM company_table WHERE Username=? AND Password=?', [logindata.username, logindata.password], (error, results)=> {
     if(results.length !== 0){
       response = {
         result: 1,
-        company: results[0].company
+        company: results[0].Company
       }
     }else{
       response = {
@@ -379,10 +388,60 @@ app.post('/api/login', (req, res) => {
   })
   
 })
+
+app.post('/api/register/add', (req, res) => {
+  var data = req.body;
+
+  var sql = 'INSERT INTO company_table (Company, Username, Password) VALUES (?, ?, ?)'
+
+  mqttSubscriber.sqlpool.query(sql, [data.Company, data.Username, data.Password], function(errors, result) {
+    if (errors) throw errors;
+    console.log("1 record inserted into company_table");
+    res.end();
+  })
+});
+
+app.post('/api/register/rm', (req, res) => {
+  var data = req.body;
+
+  var sql = 'DELETE FROM company_table WHERE Company=?'
+
+  mqttSubscriber.sqlpool.query(sql, [data.company], function(errors, result) {
+    if (errors) throw errors;
+    console.log("1 record deleted from company_table");
+  })
+  res.end();
+});
+
+app.post('/api/register/rm_all', (req, res) => {
+  var data = req.body;
+
+  var sql = 'DELETE FROM company_table'
+
+  mqttSubscriber.sqlpool.query(sql, function(errors, result) {
+    if (errors) throw errors;
+    console.log("All records deleted from company_table");
+  })
+  res.end();
+});
+
+app.post('/api/:source/fetch', (req, res) => {
+  var sql = 'SELECT * FROM company_table WHERE Company=?'
+  mqttSubscriber.sqlpool.query(sql,[req.body.company], (errors, results) => {
+    if (errors) throw errors;
+    res.json(results)
+    console.log(results)
+    res.end();
+  })
+})
+
 // All other GET requests not handled before will return our React app
 app.get('*', (req, res) => {
-  res.sendFile(path.resolve(__dirname, './client/build', 'index.html'));
-  res.end();
+  res.sendFile(path.resolve(__dirname, './client/build', 'index.html'), function(err) {
+    if (err) {
+        res.status(err.status).end();
+    }
+  });
 });
 
 app.listen(PORT, () => {

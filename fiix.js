@@ -26,22 +26,22 @@ class FiixClient{
     this.PKey = PKey;
   }
   
-  connectFiix()
+  connectFiix(callback)
   {
     const f = (error) => {
       if (!error) {    
         if(this.connected !== true){
-          this.eventEmitter.emit('connection');
           this.connected = true;
+
         }
         console.log('No error in transaction');
       } else {
         if(this.connected !== false){
-          this.eventEmitter.emit('disconnection');
           this.connected = false;
         }
         console.log('Transaction failed');
       }
+      callback(this.connected)
     }
     var rpc = {
       "name" : "Ping",

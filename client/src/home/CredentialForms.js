@@ -36,11 +36,13 @@ function Form(props){
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify(data2send)
       })
+      .then((res) => res.json())
+      .then((data) => setStatus(data.status));
       const timer = setTimeout(() => {
         fetch("/api/fiix/status")
         .then((res) => res.json())
         .then((data) => setStatus(data.status));
-      }, 5000);
+      }, 300000);
       eraseInputs();
     }
   
