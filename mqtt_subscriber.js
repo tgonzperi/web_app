@@ -14,7 +14,7 @@ const connectUrl = `mqtt://${host}:${port}`
 class mqtt_subscriber{
   constructor(){
     this.eventEmitter = new events.EventEmitter();
-    this.fiix = [new fiixclient('company1'), new fiixclient('company2')];
+    this.fiix = [new fiixclient('company'), new fiixclient('company2')];
     this.sqlpool = mysql.createPool({
       connectionLimit: 10,
       host     : 'localhost',
@@ -67,10 +67,9 @@ class mqtt_subscriber{
       return topic.slice(index_bar+1);      
     }
 
-      const sqlquery = (DeviceType, device_id, values, error, results, company) => {
+      const sqlquery = (DeviceType, device_id, values, error, results) => {
         
         if (error) {this.eventEmitter.emit('error', {ErrorCode: 1}); return}
-        let fiixObject = this.fiix.find((elem) => elem.company === company)
         if (results.length === 0){
           console.log('Device Id not found')
           var e = {
@@ -80,12 +79,13 @@ class mqtt_subscriber{
           }
           this.eventEmitter.emit('error', e); 
         }else{
+          let fiixObject = this.fiix.find((elem) => elem.company === results[0].company)
           let data = {id: results[0].id,
                     device_id: device_id,
                     DeviceType: DeviceType,
                     req: [],
                     idlist: [],
-                    company: company
+                    company: results[0].company
           }
           let max_index;
           values.forEach((element, index) => {
@@ -102,7 +102,7 @@ class mqtt_subscriber{
                   id: results[0].id,
                   device_id: device_id,
                   DeviceType: DeviceType,
-                  company: company
+                  company: results[0].company
                 };
                 this.eventEmitter.emit('error', e);
               }
@@ -125,7 +125,7 @@ class mqtt_subscriber{
                 asset_id: ids[i],
                 device_id: device_id,
                 DeviceType: DeviceType,
-                company: company
+                company: results[0].company
               };
               this.eventEmitter.emit('error', e);              
             }
@@ -138,7 +138,7 @@ class mqtt_subscriber{
               var e = {
                 error: err,
                 ErrorCode: 4,
-                company: company
+                company: results[0].company
               }
               this.eventEmitter.emit('error', e);
               sendMail(JSON.stringify(e));
@@ -169,15 +169,13 @@ class mqtt_subscriber{
           break;
       }
 
-      const find_line_in_company_table = (sql_query, company) => {
+      const find_line_in_company_table = (sql_query) => {
         this.sqlpool.query(sql_query, (err,res) => {
-          sqlquery(DeviceType, device_id, values, err, res, company);
+          sqlquery(DeviceType, device_id, values, err, res);
         })
       }
-      this.sqlpool.query(find_company, function(error, results) {
-        var sql = 'SELECT * FROM idTable WHERE device_id='+ '\'' + device_id + '\' AND company=\'' + results[0].company + '\'';
-        find_line_in_company_table(sql, results[0].company);
-      })
+      var sql = 'SELECT * FROM idTable WHERE device_id='+ '\'' + device_id + '\'';
+      find_line_in_company_table(sql);
 
     }
     this.client.on('message', function (topic, message, packet) {

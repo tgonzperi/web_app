@@ -349,6 +349,7 @@ app.post("/api/rm_all_mqtt/:DeviceType", (req, res) => {
 
 app.post("/api/errors/:DeviceType", (req, res) => {
   var DeviceType = req.params.DeviceType;
+  console.log(req.body.company)
   var fiixObject = mqttSubscriber.fiix.find((elem) => elem.company === req.body.company) 
   res.json(fiixObject.errors[DeviceType]);
   res.end();
