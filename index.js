@@ -107,7 +107,7 @@ function set_mysql_command(id, arr, DeviceType)
 }
 
 function checkDeviceId(DeviceType, device_id, company){
-  var fiixObject = mqttSubscriber.fiix.find((elem) => elem.company === e.company)  
+  var fiixObject = mqttSubscriber.fiix.find((elem) => elem.company === company)  
   fiixObject.errors[DeviceType].forEach((el, ind) => {
     if(el.ErrorCode === 2 && el.device_id === device_id){
       console.log('Missing Device Id added');
@@ -117,7 +117,7 @@ function checkDeviceId(DeviceType, device_id, company){
 }
 
 function checkMissingId(id, DeviceType, company, max_index=0){
-  var fiixObject = mqttSubscriber.fiix.find((elem) => elem.company === e.company) 
+  var fiixObject = mqttSubscriber.fiix.find((elem) => elem.company === company) 
   fiixObject.errors[DeviceType].forEach((el, ind) => {
     if(el.ErrorCode === 3 && el.id === id){
       if(max_index){
@@ -134,7 +134,7 @@ function checkMissingId(id, DeviceType, company, max_index=0){
 }
 
 function checkWrongId(id, DeviceType, company, asset_idList=[]){
-  var fiixObject = mqttSubscriber.fiix.find((elem) => elem.company === e.company) 
+  var fiixObject = mqttSubscriber.fiix.find((elem) => elem.company === company) 
   fiixObject.errors[DeviceType].forEach((el, ind) => {
     if(el.ErrorCode === 5 && el.id === id){
       if(asset_idList.length === 0){
@@ -156,7 +156,7 @@ function checkWrongId(id, DeviceType, company, asset_idList=[]){
 }
 
 function checkExtraId(id, DeviceType, company, asset_idList=[]){
-  var fiixObject = mqttSubscriber.fiix.find((elem) => elem.company === e.company) 
+  var fiixObject = mqttSubscriber.fiix.find((elem) => elem.company === company) 
   fiixObject.errors[DeviceType].forEach((el, ind) => {
     if(el.ErrorCode === 6 && el.id === id){
       if(asset_idList.length === 0){
