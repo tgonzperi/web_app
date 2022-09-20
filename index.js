@@ -340,6 +340,7 @@ app.post("/api/rm_all_mqtt/:DeviceType", (req, res) => {
       if (error) throw error;
       console.log("All records deleted for company " + req.body.company);
     }catch(e){
+      console.log(e);
       sendMail(JSON.stringify(e));
     }
   });
