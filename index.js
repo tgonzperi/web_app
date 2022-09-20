@@ -326,6 +326,7 @@ app.post("/api/rm_mqtt/:DeviceType", (req, res) => {
 });
 
 app.post("/api/rm_all_mqtt/:DeviceType", (req, res) => {
+  var data = req.body;
   var DeviceType = req.params.DeviceType;
 
   var sql = "DELETE FROM idTable WHERE DeviceType=" + DeviceType + ' AND company=' + req.body.company;
