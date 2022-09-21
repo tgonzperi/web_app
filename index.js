@@ -289,7 +289,7 @@ app.post("/api/edit_mqtt/:DeviceType", (req, res) => {
   checkMissingId(parseInt(data.id), DeviceType, data.company, asset_list.length - 1);
   checkDeviceId(DeviceType, key_val[0][1], data.company)
   checkExtraId(parseInt(data.id), DeviceType, data.company, asset_list)
-  var sql = 'UPDATE idTable SET device_id=?, id0=?, id1=?, id2=?, id3=? WHERE id=' + data.id + ' AND DeviceType=' + DeviceType + ' AND company=' + data.company;
+  var sql = 'UPDATE idTable SET device_id=?, id0=?, id1=?, id2=?, id3=? WHERE id=' + data.id + ' AND DeviceType=' + '\'' + DeviceType + '\'' + ' AND company=' + '\'' + data.company + '\'';
   
     mqttSubscriber.sqlpool.query(sql,[key_val[0][1], data.data.id0 !== '' ? data.data.id0 : null, data.data.id1 !== '' ? data.data.id1 : null, data.data.id2 !== '' ? data.data.id2 : null, data.data.id3 !== '' ? data.data.id3 : null ], function (err, result) {
       try{
