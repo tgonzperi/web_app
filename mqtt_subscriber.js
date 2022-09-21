@@ -113,7 +113,7 @@ class mqtt_subscriber{
           });
           var ids = []
           Object.entries(results[0]).forEach((element, index) => {
-            if(index > 2 && element[1] !== null)
+            if(index > 3 && element[1] !== null)
               ids.push(element[1])
           });
           if(max_index < ids.length){
