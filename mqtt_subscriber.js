@@ -89,26 +89,28 @@ class mqtt_subscriber{
           }
           let max_index;
           values.forEach((element, index) => {
-            let asset_id = results[0]['id'+index]
-            if(asset_id !== null){
-                data.idlist.push(asset_id)
-                data.req.push(fiixObject.prepareaddMeterReading(element, asset_id));
-            }else{
-              if(element !== 0){
-                console.log('id',index,' is not in database');
-                var e = {
-                  ErrorCode: 3,
-                  index: index,
-                  id: results[0].id,
-                  device_id: device_id,
-                  DeviceType: DeviceType,
-                  company: results[0].company
-                };
-                this.eventEmitter.emit('error', e);
+            if( index < 4 ) {
+              let asset_id = results[0]['id'+index]
+              if(asset_id !== null){
+                  data.idlist.push(asset_id)
+                  data.req.push(fiixObject.prepareaddMeterReading(element, asset_id));
+              }else{
+                if(element !== 0){
+                  console.log('id',index,' is not in database');
+                  var e = {
+                    ErrorCode: 3,
+                    index: index,
+                    id: results[0].id,
+                    device_id: device_id,
+                    DeviceType: DeviceType,
+                    company: results[0].company
+                  };
+                  this.eventEmitter.emit('error', e);
+                }
               }
-            }
-            if(element !== 0){
-              max_index = index;
+              if(element !== 0){
+                max_index = index;
+              }
             }
           });
           var ids = []
